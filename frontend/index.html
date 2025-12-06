@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI PDF Q&A Assistant</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+      animation: fadeIn 0.6s ease-in;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      padding: 30px;
+      margin-bottom: 20px;
+      animation: slideUp 0.6s ease-out;
+    }
+
+    .upload-section {
+      border: 2px dashed #667eea;
+      border-radius: 12px;
+      padding: 30px;
+      text-align: center;
+      transition: all 0.3s ease;
+      background: #f8f9ff;
+    }
+
+    .upload-section:hover {
+      border-color: #764ba2;
+      background: #f0f2ff;
+    }
+
+    .upload-section.dragging {
+      background: #e8ebff;
+      border-color: #764ba2;
+      transform: scale(1.02);
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
+      margin: 20px 0;
+    }
+
+    .file-input-wrapper input[type="file"] {
+      display: none;
+    }
+
+    .file-input-label {
+      display: inline-block;
+      padding: 12px 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+    }
+
+    .file-input-label:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .file-name {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background: #e8ebff;
+      border-radius: 8px;
+      color: #667eea;
+      font-weight: 500;
+      display: none;
+    }
+
+    .file-name.visible {
+      display: block;
+    }
+
+    .upload-btn {
+      margin-top: 15px;
+      padding: 12px 40px;
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: none;
+    }
+
+    .upload-btn.visible {
+      display: inline-block;
+    }
+
+    .upload-btn:hover:not(:disabled) {
+      background: #059669;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .upload-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 15px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 500;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .status.visible {
+      display: block;
+    }
+
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 4px solid #10b981;
+    }
+
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 4px solid #ef4444;
+    }
+
+    .status.loading {
+      background: #dbeafe;
+      color: #1e40af;
+      border-left: 4px solid #3b82f6;
+    }
+
+    .doc-info {
+      padding: 15px 20px;
+      background: #f8f9ff;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #667eea;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .doc-info.visible {
+      display: flex;
+    }
+
+    .doc-info-content {
+      flex: 1;
+    }
+
+    .doc-info-title {
+      font-weight: 600;
+      color: #667eea;
+      margin-bottom: 5px;
+    }
+
+    .doc-info-details {
+      color: #6b7280;
+      font-size: 0.9rem;
+    }
+
+    .doc-actions {
+      display: flex;
+      gap: 10px;
+      margin-left: 15px;
+    }
+
+    .add-pdf-btn, .remove-pdf-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .add-pdf-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .add-pdf-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .remove-pdf-btn {
+      background: #ef4444;
+      color: white;
+    }
+
+    .remove-pdf-btn:hover {
+      background: #dc2626;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+    }
+
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 500px;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      background: #f9fafb;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .messages::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .messages::-webkit-scrollbar-track {
+      background: #e5e7eb;
+      border-radius: 4px;
+    }
+
+    .messages::-webkit-scrollbar-thumb {
+      background: #9ca3af;
+      border-radius: 4px;
+    }
+
+    .messages::-webkit-scrollbar-thumb:hover {
+      background: #6b7280;
+    }
+
+    .message {
+      max-width: 75%;
+      padding: 12px 18px;
+      border-radius: 12px;
+      animation: messageSlide 0.3s ease;
+      line-height: 1.5;
+    }
+
+    .message-user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-bottom-right-radius: 4px;
+      position: relative;
+    }
+
+    .message-bot {
+      align-self: flex-start;
+      background: white;
+      color: #1f2937;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-bottom-left-radius: 4px;
+    }
+
+    .message-edit-btn {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: white;
+      border: 2px solid #667eea;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #667eea;
+      font-size: 12px;
+      opacity: 0;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .message-user:hover .message-edit-btn {
+      opacity: 1;
+    }
+
+    .message-edit-btn:hover {
+      background: #667eea;
+      color: white;
+    }
+
+    .message-edit-input {
+      width: 100%;
+      padding: 10px 15px;
+      border: 2px solid #667eea;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+      margin-bottom: 10px;
+    }
+
+    .message-edit-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .edit-save-btn, .edit-cancel-btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .edit-save-btn {
+      background: #10b981;
+      color: white;
+    }
+
+    .edit-save-btn:hover {
+      background: #059669;
+    }
+
+    .edit-cancel-btn {
+      background: #9ca3af;
+      color: white;
+    }
+
+    .edit-cancel-btn:hover {
+      background: #6b7280;
+    }
+
+    .input-container {
+      display: flex;
+      gap: 10px;
+    }
+
+    .question-input {
+      flex: 1;
+      padding: 14px 20px;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .question-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .ask-btn {
+      padding: 14px 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .ask-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .ask-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #9ca3af;
+    }
+
+    .empty-state svg {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    .loader {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 3px solid #ffffff;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes messageSlide {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 1.8rem;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      .message {
+        max-width: 85%;
+      }
+
+      .input-container {
+        flex-direction: column;
+      }
+
+      .ask-btn {
+        width: 100%;
+      }
+
+      .doc-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .doc-actions {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📄 AI PDF Q&A Assistant</h1>
+      <p>Upload your PDF and ask questions - powered by RAG technology</p>
+    </div>
+
+    <!-- Upload Card -->
+    <div class="card">
+      <div class="upload-section" id="uploadSection">
+        <h2 style="margin-bottom: 15px; color: #667eea;">Upload Your Document</h2>
+        <p style="color: #6b7280; margin-bottom: 20px;">Drag and drop or click to select a PDF file</p>
+        
+        <div class="file-input-wrapper">
+          <input type="file" id="fileInput" accept=".pdf" />
+          <label for="fileInput" class="file-input-label">
+            <span>📁 Choose PDF File</span>
+          </label>
+        </div>
+
+        <div class="file-name" id="fileName"></div>
+        <button class="upload-btn" id="uploadBtn">
+          <span id="uploadBtnText">🚀 Upload & Index</span>
+        </button>
+
+        <div class="status" id="status"></div>
+      </div>
+
+      <div class="doc-info" id="docInfo">
+        <div class="doc-info-content">
+          <div class="doc-info-title">✅ Document Ready</div>
+          <div class="doc-info-details" id="docInfoDetails"></div>
+        </div>
+        <div class="doc-actions">
+          <button class="add-pdf-btn" id="addPdfBtn">
+            <span></span>
+          </button>
+          <button class="remove-pdf-btn" id="removePdfBtn">
+            <span>🗑 Remove</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Card -->
+    <div class="card">
+      <h2 style="margin-bottom: 20px; color: #667eea;">💬 Ask Questions</h2>
+      
+      <div class="chat-container">
+        <div class="messages" id="messages">
+          <div class="empty-state">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+            </svg>
+            <p>Upload a PDF document to start asking questions</p>
+          </div>
+        </div>
+
+        <div class="input-container">
+          <input 
+            type="text" 
+            class="question-input" 
+            id="questionInput" 
+            placeholder="Type your question here..."
+            disabled
+          />
+          <button class="ask-btn" id="askBtn" disabled>
+            <span id="askBtnText">Ask</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:8000";
+    let currentDocId = null;
+    let currentFileName = "";
+
+    const uploadSection = document.getElementById("uploadSection");
+    const fileInput = document.getElementById("fileInput");
+    const fileName = document.getElementById("fileName");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const uploadBtnText = document.getElementById("uploadBtnText");
+    const status = document.getElementById("status");
+    const docInfo = document.getElementById("docInfo");
+    const docInfoDetails = document.getElementById("docInfoDetails");
+    const messages = document.getElementById("messages");
+    const questionInput = document.getElementById("questionInput");
+    const askBtn = document.getElementById("askBtn");
+    const askBtnText = document.getElementById("askBtnText");
+    const addPdfBtn = document.getElementById("addPdfBtn");
+    const removePdfBtn = document.getElementById("removePdfBtn");
+
+    // Initialize with doc info hidden
+    docInfo.style.display = "none";
+
+    // Drag and drop handlers
+    uploadSection.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      uploadSection.classList.add("dragging");
+    });
+
+    uploadSection.addEventListener("dragleave", () => {
+      uploadSection.classList.remove("dragging");
+    });
+
+    uploadSection.addEventListener("drop", (e) => {
+      e.preventDefault();
+      uploadSection.classList.remove("dragging");
+      
+      const files = e.dataTransfer.files;
+      if (files.length > 0 && files[0].type === "application/pdf") {
+        fileInput.files = files;
+        showFileName(files[0]);
+      }
+    });
+
+    // File input change
+    fileInput.addEventListener("change", (e) => {
+      if (e.target.files.length > 0) {
+        showFileName(e.target.files[0]);
+      }
+    });
+
+    // Add PDF button handler
+    addPdfBtn.onclick = () => {
+      resetUploadUI();
+    };
+
+    // Remove PDF button handler
+    removePdfBtn.onclick = async () => {
+      if (!currentDocId) return;
+      
+      if (confirm("Are you sure you want to remove this PDF? This will clear all chat history.")) {
+        try {
+          // Clear local state
+          currentDocId = null;
+          currentFileName = "";
+          
+          // Clear UI
+          docInfo.style.display = "none";
+          resetUploadUI();
+          clearMessages();
+          
+          // Disable chat
+          questionInput.disabled = true;
+          askBtn.disabled = true;
+          
+          // Reset status
+          showStatus("PDF removed successfully", "success");
+          setTimeout(() => hideStatus(), 3000);
+          
+        } catch (err) {
+          showStatus(`Error removing PDF: ${err.message}`, "error");
+        }
+      }
+    };
+
+    function resetUploadUI() {
+      fileInput.value = "";
+      fileName.textContent = "";
+      fileName.classList.remove("visible");
+      uploadBtn.classList.remove("visible");
+      uploadBtn.disabled = false;
+      uploadBtnText.textContent = "🚀 Upload & Index";
+      hideStatus();
+    }
+
+    function showFileName(file) {
+      currentFileName = file.name;
+      fileName.textContent = `📄 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+      fileName.classList.add("visible");
+      uploadBtn.classList.add("visible");
+      hideStatus();
+    }
+
+    function showStatus(message, type) {
+      status.textContent = message;
+      status.className = `status visible ${type}`;
+    }
+
+    function hideStatus() {
+      status.classList.remove("visible");
+    }
+
+    function clearMessages() {
+      messages.innerHTML = `
+        <div class="empty-state">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+          </svg>
+          <p>Start asking questions about your document</p>
+        </div>
+      `;
+    }
+
+    function addMessage(text, isUser = false) {
+      // Remove empty state on first message
+      const emptyState = messages.querySelector(".empty-state");
+      if (emptyState) {
+        emptyState.remove();
+      }
+
+      const messageDiv = document.createElement("div");
+      messageDiv.className = isUser ? "message message-user" : "message message-bot";
+      messageDiv.textContent = text;
+      
+      if (isUser) {
+        // Add edit button for user messages
+        const editBtn = document.createElement("button");
+        editBtn.className = "message-edit-btn";
+        editBtn.innerHTML = "✏️";
+        editBtn.title = "Edit question";
+        editBtn.onclick = () => editMessage(messageDiv, text);
+        messageDiv.appendChild(editBtn);
+      }
+      
+      messages.appendChild(messageDiv);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function editMessage(messageElement, originalText) {
+      // Create edit interface
+      const editContainer = document.createElement("div");
+      editContainer.innerHTML = `
+        <input type="text" class="message-edit-input" value="${originalText}">
+        <div class="message-edit-actions">
+          <button class="edit-cancel-btn">Cancel</button>
+          <button class="edit-save-btn">Save & Ask</button>
+        </div>
+      `;
+      
+      // Replace message with edit interface
+      messageElement.parentNode.insertBefore(editContainer, messageElement);
+      messageElement.style.display = "none";
+      
+      const editInput = editContainer.querySelector(".message-edit-input");
+      const cancelBtn = editContainer.querySelector(".edit-cancel-btn");
+      const saveBtn = editContainer.querySelector(".edit-save-btn");
+      
+      editInput.focus();
+      editInput.select();
+      
+      // Cancel edit
+      cancelBtn.onclick = () => {
+        editContainer.remove();
+        messageElement.style.display = "block";
+      };
+      
+      // Save and ask
+      saveBtn.onclick = () => {
+        const editedQuestion = editInput.value.trim();
+        if (editedQuestion && editedQuestion !== originalText) {
+          editContainer.remove();
+          messageElement.remove();
+          askQuestion(editedQuestion);
+        } else {
+          cancelBtn.click();
+        }
+      };
+      
+      // Enter key to save
+      editInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          saveBtn.click();
+        }
+      });
+    }
+
+    function askQuestion(question) {
+      // Add the edited question
+      addMessage(question, true);
+      questionInput.value = "";
+      askBtn.disabled = true;
+      askBtnText.innerHTML = '<span class="loader"></span>Thinking...';
+
+      // Send to API
+      sendQuestionToAPI(question);
+    }
+
+    async function sendQuestionToAPI(question) {
+      try {
+        const res = await fetch(`${API_BASE}/ask`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            doc_id: currentDocId,
+            question: question
+          })
+        });
+
+        if (!res.ok) {
+          throw new Error("Server error");
+        }
+
+        const data = await res.json();
+        addMessage(data.answer, false);
+
+      } catch (err) {
+        addMessage(`Error: ${err.message}`, false);
+      } finally {
+        askBtn.disabled = false;
+        askBtnText.textContent = "Ask";
+      }
+    }
+
+    // Upload handler
+    uploadBtn.onclick = async () => {
+      const file = fileInput.files[0];
+      if (!file) {
+        showStatus("Please choose a PDF first", "error");
+        return;
+      }
+
+      uploadBtn.disabled = true;
+      uploadBtnText.innerHTML = '<span class="loader"></span>Uploading...';
+      showStatus("Processing your document...", "loading");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch(`${API_BASE}/upload`, {
+          method: "POST",
+          body: formData
+        });
+
+        if (!res.ok) {
+          throw new Error("Upload failed");
+        }
+
+        const data = await res.json();
+        currentDocId = data.doc_id;
+        currentFileName = file.name;
+        
+        showStatus("Upload successful! Ready for questions.", "success");
+        docInfoDetails.innerHTML = `
+          <strong>File:</strong> ${currentFileName}<br>
+          <strong>Document ID:</strong> ${currentDocId}<br>
+          <strong>Chunks indexed:</strong> ${data.num_chunks}
+        `;
+        docInfo.style.display = "flex";
+
+        // Enable chat
+        questionInput.disabled = false;
+        askBtn.disabled = false;
+        clearMessages();
+
+        // Reset upload button
+        setTimeout(() => {
+          uploadBtn.disabled = false;
+          uploadBtnText.textContent = "🚀 Upload & Index";
+        }, 2000);
+
+      } catch (err) {
+        showStatus(`Upload error: ${err.message}`, "error");
+        uploadBtn.disabled = false;
+        uploadBtnText.textContent = "🚀 Upload & Index";
+      }
+    };
+
+    // Ask question handler
+    askBtn.onclick = async () => {
+      const question = questionInput.value.trim();
+      if (!question) {
+        return;
+      }
+      if (!currentDocId) {
+        showStatus("Please upload a PDF first", "error");
+        return;
+      }
+
+      askQuestion(question);
+    };
+
+    // Enter key to ask
+    questionInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter" && !askBtn.disabled) {
+        askBtn.click();
+      }
+    });
+  </script>
+</body>
+</html>
